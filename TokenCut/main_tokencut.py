@@ -22,7 +22,7 @@ from visualizations import (
     visualize_predictions,
     visualize_predictions_gt,
 )
-from object_discovery import ncut, fast_ncut
+from object_discovery import ncut, fast_ncut, fast_ncut_optimized
 import matplotlib.pyplot as plt
 import time
 
@@ -333,7 +333,8 @@ if __name__ == "__main__":
             )
             b = time.time()
 
-            pred, objects, foreground, seed, bins, eigenvector = fast_ncut(
+            # pred, objects, foreground, seed, bins, eigenvector = fast_ncut(
+            pred, objects, foreground, bins, eigenvector = fast_ncut_optimized(  
                 feats,
                 [w_featmap, h_featmap],
                 scales,

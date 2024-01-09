@@ -7,7 +7,7 @@ Based on Tokencut(cvpr2022), uses fast NCut to replace the Original Ncut
 - replace the Orioginal NCut method
 - uses Fast Ncut [FastNcut](https://ieeexplore.ieee.org/document/5206561)
 
-Original Implementation of NCut 
+Original Implementation of NCut
 
     Implementation of NCut Method.
     Inputs
@@ -21,5 +21,3 @@ Original Implementation of NCut
       no_binary_graph: ablation study for using similarity score as graph edge weight
 
 Fast Ncut
-
-    
