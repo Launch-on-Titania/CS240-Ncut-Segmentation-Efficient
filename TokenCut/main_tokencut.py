@@ -16,7 +16,12 @@ from PIL import Image
 
 from networks import get_model
 from datasets import ImageDataset, Dataset, bbox_iou
-from visualizations import visualize_img, visualize_eigvec, visualize_predictions, visualize_predictions_gt 
+from visualizations import (
+    visualize_img,
+    visualize_eigvec,
+    visualize_predictions,
+    visualize_predictions_gt,
+)
 from object_discovery import ncut, fast_ncut
 import matplotlib.pyplot as plt
 import time
@@ -49,14 +54,14 @@ if __name__ == "__main__":
         choices=[None, "VOC07", "VOC12", "COCO20k"],
         help="Dataset name.",
     )
-    
+
     parser.add_argument(
         "--save-feat-dir",
         type=str,
         default=None,
         help="if save-feat-dir is not None, only computing features and save it into save-feat-dir",
     )
-    
+
     parser.add_argument(
         "--set",
         default="train",
@@ -72,15 +77,29 @@ if __name__ == "__main__":
         help="If want to apply only on one image, give file path.",
     )
 
-    # Folder used to output visualizations and 
+    # Folder used to output visualizations and
     parser.add_argument(
-        "--output_dir", type=str, default="outputs", help="Output directory to store predictions and visualizations."
+        "--output_dir",
+        type=str,
+        default="outputs",
+        help="Output directory to store predictions and visualizations.",
     )
 
     # Evaluation setup
-    parser.add_argument("--no_hard", action="store_true", help="Only used in the case of the VOC_all setup (see the paper).")
-    parser.add_argument("--no_evaluation", action="store_true", help="Compute the evaluation.")
-    parser.add_argument("--save_predictions", default=True, type=bool, help="Save predicted bouding boxes.")
+    parser.add_argument(
+        "--no_hard",
+        action="store_true",
+        help="Only used in the case of the VOC_all setup (see the paper).",
+    )
+    parser.add_argument(
+        "--no_evaluation", action="store_true", help="Compute the evaluation."
+    )
+    parser.add_argument(
+        "--save_predictions",
+        default=True,
+        type=bool,
+        help="Save predicted bouding boxes.",
+    )
 
     # Visualization
     parser.add_argument(
@@ -103,15 +122,28 @@ if __name__ == "__main__":
         "--k_patches",
         type=int,
         default=100,
-        help="Number of patches with the lowest degree considered."
+        help="Number of patches with the lowest degree considered.",
     )
-    parser.add_argument("--resize", type=int, default=None, help="Resize input image to fix size")
-    parser.add_argument("--tau", type=float, default=0.2, help="Tau for seperating the Graph.")
-    parser.add_argument("--eps", type=float, default=1e-5, help="Eps for defining the Graph.")
-    parser.add_argument("--no-binary-graph", action="store_true", default=False, help="Generate a binary graph where edge of the Graph will binary. Or using similarity score as edge weight.")
+    parser.add_argument(
+        "--resize", type=int, default=None, help="Resize input image to fix size"
+    )
+    parser.add_argument(
+        "--tau", type=float, default=0.2, help="Tau for seperating the Graph."
+    )
+    parser.add_argument(
+        "--eps", type=float, default=1e-5, help="Eps for defining the Graph."
+    )
+    parser.add_argument(
+        "--no-binary-graph",
+        action="store_true",
+        default=False,
+        help="Generate a binary graph where edge of the Graph will binary. Or using similarity score as edge weight.",
+    )
 
     # Use dino-seg proposed method
-    parser.add_argument("--dinoseg", action="store_true", help="Apply DINO-seg baseline.")
+    parser.add_argument(
+        "--dinoseg", action="store_true", help="Apply DINO-seg baseline."
+    )
     parser.add_argument("--dinoseg_head", type=int, default=4)
 
     args = parser.parse_args()
@@ -133,7 +165,7 @@ if __name__ == "__main__":
     # -------------------------------------------------------------------------------------------------------
     # Model
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-    #device = torch.device('cuda') 
+    # device = torch.device('cuda')
     model = get_model(args.arch, args.patch_size, device)
 
     # -------------------------------------------------------------------------------------------------------
@@ -149,19 +181,19 @@ if __name__ == "__main__":
             raise ValueError("DINO-seg can only be applied to tranformer networks.")
         exp_name = f"{args.arch}-{args.patch_size}_dinoseg-head{args.dinoseg_head}"
     else:
-        # Experiment with TokenCut 
+        # Experiment with TokenCut
         exp_name = f"TokenCut-{args.arch}"
         if "vit" in args.arch:
             exp_name += f"{args.patch_size}_{args.which_features}"
 
     print(f"Running TokenCut on the dataset {dataset.name} (exp: {exp_name})")
 
-    # Visualization 
+    # Visualization
     if args.visualize:
         vis_folder = f"{args.output_dir}/{exp_name}"
         os.makedirs(vis_folder, exist_ok=True)
-        
-    if args.save_feat_dir is not None : 
+
+    if args.save_feat_dir is not None:
         os.mkdir(args.save_feat_dir)
 
     # -------------------------------------------------------------------------------------------------------
@@ -169,13 +201,12 @@ if __name__ == "__main__":
     preds_dict = {}
     cnt = 0
     corloc = np.zeros(len(dataset.dataloader))
-    
-    start_time = time.time() 
+
+    start_time = time.time()
     pbar = tqdm(dataset.dataloader)
     ncut_time = 0
     fast_ncut_time = 0
     for im_id, inp in enumerate(pbar):
-
         # ------------ IMAGE PROCESSING -------------------------------------------
         img = inp[0]
 
@@ -198,7 +229,7 @@ if __name__ == "__main__":
         img = paded
 
         # # Move to gpu
-        if device == torch.device('cuda'):
+        if device == torch.device("cuda"):
             img = img.cuda(non_blocking=True)
         # Size for transformers
         w_featmap = img.shape[-2] // args.patch_size
@@ -216,14 +247,17 @@ if __name__ == "__main__":
 
         # ------------ EXTRACT FEATURES -------------------------------------------
         with torch.no_grad():
-
             # ------------ FORWARD PASS -------------------------------------------
-            if "vit"  in args.arch:
+            if "vit" in args.arch:
                 # Store the outputs of qkv layer from the last attention layer
                 feat_out = {}
+
                 def hook_fn_forward_qkv(module, input, output):
                     feat_out["qkv"] = output
-                model._modules["blocks"][-1]._modules["attn"]._modules["qkv"].register_forward_hook(hook_fn_forward_qkv)
+
+                model._modules["blocks"][-1]._modules["attn"]._modules[
+                    "qkv"
+                ].register_forward_hook(hook_fn_forward_qkv)
 
                 # Forward pass in the model
                 attentions = model.get_last_selfattention(img[None, :, :, :])
@@ -239,7 +273,12 @@ if __name__ == "__main__":
                 # Baseline: compute DINO segmentation technique proposed in the DINO paper
                 # and select the biggest component
                 if args.dinoseg:
-                    pred = dino_seg(attentions, (w_featmap, h_featmap), args.patch_size, head=args.dinoseg_head)
+                    pred = dino_seg(
+                        attentions,
+                        (w_featmap, h_featmap),
+                        args.patch_size,
+                        head=args.dinoseg_head,
+                    )
                     pred = np.asarray(pred)
                 else:
                     # Extract the qkv features of the last attention layer
@@ -255,48 +294,75 @@ if __name__ == "__main__":
 
                     # Modality selection
                     if args.which_features == "k":
-                        #feats = k[:, 1:, :]
+                        # feats = k[:, 1:, :]
                         feats = k
                     elif args.which_features == "q":
-                        #feats = q[:, 1:, :]
+                        # feats = q[:, 1:, :]
                         feats = q
                     elif args.which_features == "v":
-                        #feats = v[:, 1:, :]
+                        # feats = v[:, 1:, :]
                         feats = v
-                        
-                    if args.save_feat_dir is not None : 
-                        np.save(os.path.join(args.save_feat_dir, im_name.replace('.jpg', '.npy').replace('.jpeg', '.npy').replace('.png', '.npy')), feats.cpu().numpy())
+
+                    if args.save_feat_dir is not None:
+                        np.save(
+                            os.path.join(
+                                args.save_feat_dir,
+                                im_name.replace(".jpg", ".npy")
+                                .replace(".jpeg", ".npy")
+                                .replace(".png", ".npy"),
+                            ),
+                            feats.cpu().numpy(),
+                        )
                         continue
 
             else:
                 raise ValueError("Unknown model.")
 
-        # ------------ Apply TokenCut ------------------------------------------- 
+        # ------------ Apply TokenCut -------------------------------------------
         if not args.dinoseg:
             a = time.time()
-            pred, objects, foreground, seed , bins, eigenvector= ncut(feats, [w_featmap, h_featmap], scales, init_image_size, args.tau, args.eps, im_name=im_name, no_binary_graph=args.no_binary_graph)
-            b= time.time()
+            pred, objects, foreground, seed, bins, eigenvector = ncut(
+                feats,
+                [w_featmap, h_featmap],
+                scales,
+                init_image_size,
+                args.tau,
+                args.eps,
+                im_name=im_name,
+                no_binary_graph=args.no_binary_graph,
+            )
+            b = time.time()
 
-            pred, objects, foreground, seed, bins, eigenvector = fast_ncut(feats, [w_featmap, h_featmap], scales,
-                                                                      init_image_size, args.tau, args.eps,
-                                                                      im_name=im_name,
-                                                                      no_binary_graph=args.no_binary_graph)
+            pred, objects, foreground, seed, bins, eigenvector = fast_ncut(
+                feats,
+                [w_featmap, h_featmap],
+                scales,
+                init_image_size,
+                args.tau,
+                args.eps,
+                im_name=im_name,
+                no_binary_graph=args.no_binary_graph,
+            )
             c = time.time()
             # print('Ncut:', b-a)
             # print('Fast_ncut:', c-b)
-            ncut_time = ncut_time + (b-a)
-            fast_ncut_time = fast_ncut_time + (c-b)
+            ncut_time = ncut_time + (b - a)
+            fast_ncut_time = fast_ncut_time + (c - b)
 
-            if args.visualize == "pred" and args.no_evaluation :
+            if args.visualize == "pred" and args.no_evaluation:
                 image = dataset.load_image(im_name, size_im)
                 visualize_predictions(image, pred, vis_folder, im_name)
             if args.visualize == "attn" and args.no_evaluation:
-                visualize_eigvec(eigenvector, vis_folder, im_name, [w_featmap, h_featmap], scales)
+                visualize_eigvec(
+                    eigenvector, vis_folder, im_name, [w_featmap, h_featmap], scales
+                )
             if args.visualize == "all" and args.no_evaluation:
                 image = dataset.load_image(im_name, size_im)
                 visualize_predictions(image, pred, vis_folder, im_name)
-                visualize_eigvec(eigenvector, vis_folder, im_name, [w_featmap, h_featmap], scales)
-                        
+                visualize_eigvec(
+                    eigenvector, vis_folder, im_name, [w_featmap, h_featmap], scales
+                )
+
         # ------------ Visualizations -------------------------------------------
         # Save the prediction
         preds_dict[im_name] = pred
@@ -307,21 +373,23 @@ if __name__ == "__main__":
 
         # Compare prediction to GT boxes
         ious = bbox_iou(torch.from_numpy(pred), torch.from_numpy(gt_bbxs))
-        
+
         if torch.any(ious >= 0.5):
             corloc[im_id] = 1
         vis_folder = f"{args.output_dir}/{exp_name}"
         os.makedirs(vis_folder, exist_ok=True)
         image = dataset.load_image(im_name)
-        #visualize_predictions(image, pred, vis_folder, im_name)
-        #visualize_eigvec(eigenvector, vis_folder, im_name, [w_featmap, h_featmap], scales)
+        # visualize_predictions(image, pred, vis_folder, im_name)
+        # visualize_eigvec(eigenvector, vis_folder, im_name, [w_featmap, h_featmap], scales)
 
         cnt += 1
         if cnt % 50 == 0:
             pbar.set_description(f"Found {int(np.sum(corloc))}/{cnt}")
 
     end_time = time.time()
-    print(f'Time cost: {str(datetime.timedelta(milliseconds=int((end_time - start_time)*1000)))}')
+    print(
+        f"Time cost: {str(datetime.timedelta(milliseconds=int((end_time - start_time)*1000)))}"
+    )
     # Save predicted bounding boxes
     if args.save_predictions:
         folder = f"{args.output_dir}/{exp_name}"
@@ -334,9 +402,9 @@ if __name__ == "__main__":
     # Evaluate
     if not args.no_evaluation:
         print(f"corloc: {100*np.sum(corloc)/cnt:.2f} ({int(np.sum(corloc))}/{cnt})")
-        result_file = os.path.join(folder, 'results.txt')
-        with open(result_file, 'w') as f:
-            f.write('corloc,%.1f,,\n'%(100*np.sum(corloc)/cnt))
-        print('File saved at %s'%result_file)
-    print('ncut time:', ncut_time)
-    print('fast ncut time:', fast_ncut_time)
+        result_file = os.path.join(folder, "results.txt")
+        with open(result_file, "w") as f:
+            f.write("corloc,%.1f,,\n" % (100 * np.sum(corloc) / cnt))
+        print("File saved at %s" % result_file)
+    print("ncut time:", ncut_time)
+    print("fast ncut time:", fast_ncut_time)
