@@ -17,7 +17,7 @@ from PIL import Image
 from networks import get_model
 from datasets import ImageDataset, Dataset, bbox_iou
 from visualizations import visualize_img, visualize_eigvec, visualize_predictions, visualize_predictions_gt 
-from object_discovery import ncut 
+from object_discovery import ncut, fast_ncut
 import matplotlib.pyplot as plt
 import time
 
@@ -172,6 +172,8 @@ if __name__ == "__main__":
     
     start_time = time.time() 
     pbar = tqdm(dataset.dataloader)
+    ncut_time = 0
+    fast_ncut_time = 0
     for im_id, inp in enumerate(pbar):
 
         # ------------ IMAGE PROCESSING -------------------------------------------
@@ -271,8 +273,20 @@ if __name__ == "__main__":
 
         # ------------ Apply TokenCut ------------------------------------------- 
         if not args.dinoseg:
+            a = time.time()
             pred, objects, foreground, seed , bins, eigenvector= ncut(feats, [w_featmap, h_featmap], scales, init_image_size, args.tau, args.eps, im_name=im_name, no_binary_graph=args.no_binary_graph)
-            
+            b= time.time()
+
+            pred, objects, foreground, seed, bins, eigenvector = fast_ncut(feats, [w_featmap, h_featmap], scales,
+                                                                      init_image_size, args.tau, args.eps,
+                                                                      im_name=im_name,
+                                                                      no_binary_graph=args.no_binary_graph)
+            c = time.time()
+            # print('Ncut:', b-a)
+            # print('Fast_ncut:', c-b)
+            ncut_time = ncut_time + (b-a)
+            fast_ncut_time = fast_ncut_time + (c-b)
+
             if args.visualize == "pred" and args.no_evaluation :
                 image = dataset.load_image(im_name, size_im)
                 visualize_predictions(image, pred, vis_folder, im_name)
@@ -324,3 +338,5 @@ if __name__ == "__main__":
         with open(result_file, 'w') as f:
             f.write('corloc,%.1f,,\n'%(100*np.sum(corloc)/cnt))
         print('File saved at %s'%result_file)
+    print('ncut time:', ncut_time)
+    print('fast ncut time:', fast_ncut_time)
