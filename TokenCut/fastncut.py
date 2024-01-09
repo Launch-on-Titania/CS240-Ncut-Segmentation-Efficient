@@ -44,7 +44,6 @@ class FastNcut:
         B = torch.from_numpy(self.B).to(torch.float32).cuda()
         c = torch.from_numpy(self.c).to(torch.float32).cuda()
 
-        # 计算P和PA
         P = (
             torch.eye(len(A), dtype=torch.float32).cuda()
             - B.T @ torch.linalg.pinv(B @ B.T) @ B
