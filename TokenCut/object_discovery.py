@@ -8,6 +8,8 @@ import torch.nn.functional as F
 import numpy as np
 from scipy.linalg import eigh
 from scipy import ndimage
+from fastncut import FastNcut
+
 
 def ncut(feats, dims, scales, init_image_size, tau = 0, eps=1e-5, im_name='', no_binary_graph=False):
     """
@@ -91,3 +93,54 @@ def detect_box(bipartition, seed,  dims, initial_im_size=None, scales=None, prin
     else:
         raise NotImplementedError
 
+
+def fast_ncut(feats, dims, scales, init_image_size, tau=0, eps=1e-5, im_name='', no_binary_graph=False):
+    """
+    Implementation of Fast NCut Method.
+    Inputs
+      feats: the pixel/patche features of an image
+      dims: dimension of the map from which the features are used
+      scales: from image to map scale
+      init_image_size: size of the image
+      tau: thresold for graph construction
+      eps: graph edge weight
+      im_name: image_name
+      no_binary_graph: ablation study for using similarity score as graph edge weight
+    """
+    cls_token = feats[0, 0:1, :].cpu().numpy()
+
+    feats = feats[0, 1:, :]
+    feats = F.normalize(feats, p=2)
+    A = (feats @ feats.transpose(1, 0))
+    A = A.cpu().numpy()
+    if no_binary_graph:
+        A[A < tau] = eps
+    else:
+        A = A > tau
+        A = np.where(A.astype(float) == 0, eps, A)
+
+    const = np.array([[0, 1], [0, 2], [1, 5], [3, 8], [24, 33]])
+    model = FastNcut(const=const, A=A)
+    fast_ncut_result = model.fit(A)
+    second_smallest_vec = fast_ncut_result.reshape(-1)
+    eigenvec = fast_ncut_result.reshape(-1)
+
+    avg = np.sum(second_smallest_vec) / len(second_smallest_vec)
+    bipartition = second_smallest_vec > avg
+
+    seed = np.argmin(np.abs(second_smallest_vec))
+
+    # if bipartition[seed] != 1:
+    #     eigenvec = eigenvec * -1
+    #     bipartition = np.logical_not(bipartition)
+    eigenvec = eigenvec * -1
+    bipartition = np.logical_not(bipartition)
+    bipartition = bipartition.reshape(dims).astype(float)
+
+    # predict BBox
+    pred, _, objects, cc = detect_box(bipartition, seed, dims, scales=scales,
+                                      initial_im_size=init_image_size[1:])  ## We only extract the principal object BBox
+    mask = np.zeros(dims)
+    mask[cc[0], cc[1]] = 1
+
+    return np.asarray(pred), objects, mask, seed, None, eigenvec.reshape(dims)
