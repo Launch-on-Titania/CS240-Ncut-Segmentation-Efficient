@@ -334,7 +334,7 @@ if __name__ == "__main__":
             b = time.time()
 
             # pred, objects, foreground, seed, bins, eigenvector = fast_ncut(
-            pred, objects, foreground, bins, eigenvector = fast_ncut_optimized(  
+            pred, objects, foreground, bins, eigenvector = fast_ncut_optimized(
                 feats,
                 [w_featmap, h_featmap],
                 scales,
@@ -345,8 +345,7 @@ if __name__ == "__main__":
                 no_binary_graph=args.no_binary_graph,
             )
             c = time.time()
-            # print('Ncut:', b-a)
-            # print('Fast_ncut:', c-b)
+    
             ncut_time = ncut_time + (b - a)
             fast_ncut_time = fast_ncut_time + (c - b)
 

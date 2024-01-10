@@ -5,8 +5,9 @@ Code adapted from LOST: https://github.com/valeoai/LOST
 
 import torch
 import torch.nn.functional as F
+from torch.linalg import eigh
 import numpy as np
-from scipy.linalg import eigh
+# from scipy.linalg import eigh
 from scipy import ndimage
 from fastncut import FastNcut
 
@@ -33,22 +34,24 @@ def ncut(
       im_name: image_name
       no_binary_graph: ablation study for using similarity score as graph edge weight
     """
-    cls_token = feats[0, 0:1, :].cpu().numpy()
+    cls_token = feats[0, 0:1, :].detach()
 
     feats = feats[0, 1:, :]
-    feats = F.normalize(feats, p=2)
+    feats = torch.nn.functional.normalize(feats, p=2)
     A = feats @ feats.transpose(1, 0)
-    A = A.cpu().numpy()
+
     if no_binary_graph:
         A[A < tau] = eps
     else:
-        A = A > tau
-        A = np.where(A.astype(float) == 0, eps, A)
-    d_i = np.sum(A, axis=1)
-    D = np.diag(d_i)
+        A = (A > tau).float()
+        A[A == 0] = eps
+    d_i = torch.sum(A, dim=1)
+    D = torch.diag(d_i)
 
     # Print second and third smallest eigenvector
-    _, eigenvectors = eigh(D - A, D, subset_by_index=[1, 2])
+    L = D - A
+    _, eigenvectors = torch.linalg.eigh(L, UPLO="U")
+    eigenvectors = eigenvectors.cpu().numpy()
     eigenvec = np.copy(eigenvectors[:, 0])
 
     # Using average point to compute bipartition

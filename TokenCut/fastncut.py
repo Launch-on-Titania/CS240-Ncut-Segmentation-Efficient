@@ -26,18 +26,18 @@ class FastNcut:
         c = np.zeros([const_num, 1])
         return B, c
 
-    def _init_P(self):
-        return np.eye(len(self.A)) - self.B.T @ self.BB_inv @ self.B
+    # def _init_P(self):
+    #     return np.eye(len(self.A)) - self.B.T @ self.BB_inv @ self.B
 
-    def _init_n(self):
-        return self.B.T @ self.BB_inv @ self.c
+    # def _init_n(self):
+    #     return self.B.T @ self.BB_inv @ self.c
 
-    def _init_ganma(self, n):
-        return np.sqrt(1 - np.linalg.norm(n) ** 2)
+    # def _init_ganma(self, n):
+    #     return np.sqrt(1 - np.linalg.norm(n) ** 2)
 
-    def _init_v(self, ganma, P, n):
-        PA = P @ self.A
-        return ganma * PA @ n / np.linalg.norm(PA @ n) + n
+    # def _init_v(self, ganma, P, n):
+    #     PA = P @ self.A
+    #     return ganma * PA @ n / np.linalg.norm(PA @ n) + n
 
     def _projected_powermethod(self):
         A = torch.from_numpy(self.A).to(torch.float32).cuda()
