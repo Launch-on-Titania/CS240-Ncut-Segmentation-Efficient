@@ -1,2 +1,7 @@
 TokenCut/datasets/VOC2007/VOCdevkit/VOC2007/
-TokenCut/datasets/VOC2012/VOCdevkit
+TokenCut/datasets/VOC2012/VOCdevkit/
+TokenCut/datasets/COCO/train2014.zip    
+TokenCut/datasets/COCO/
+TokenCut/datasets/COCO/
+fast_ncut/*
+save/
